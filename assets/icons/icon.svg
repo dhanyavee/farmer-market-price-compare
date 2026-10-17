@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Market Price Compare">
+  <rect width="512" height="512" rx="96" fill="#15803d"/>
+  <path d="M256 96c-40 26-64 62-64 104 0 30 16 54 40 68-8 44-24 76-48 104h144c-24-28-40-60-48-104 24-14 40-38 40-68 0-42-24-78-64-104z" fill="#bbf7d0"/>
+  <circle cx="256" cy="96" r="24" fill="#fbbf24"/>
+  <rect x="120" y="392" width="64" height="40" rx="8" fill="#fbbf24"/>
+  <rect x="224" y="392" width="64" height="40" rx="8" fill="#fbbf24"/>
+  <rect x="328" y="392" width="64" height="40" rx="8" fill="#fbbf24"/>
+</svg>

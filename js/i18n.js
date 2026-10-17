@@ -1,0 +1,132 @@
+(function (global) {
+  "use strict";
+
+  var STRINGS = {
+    en: {
+      appTitle: "Market Price Compare",
+      appSubtitle: "Find the market that pays you the most after expenses",
+      crop: "Crop",
+      quantity: "Quantity",
+      unit: "Unit",
+      kg: "Kilogram",
+      quintal: "Quintal",
+      tonne: "Tonne",
+      localMarket: "Your nearest market",
+      transportRate: "Transport rate (Rs / km / quintal)",
+      advanced: "Advanced costs",
+      loading: "Loading (Rs)",
+      unloading: "Unloading (Rs)",
+      commission: "Commission (%)",
+      mandiFee: "Market fee (Rs)",
+      fixedTransport: "Fixed transport cost (Rs, optional)",
+      compare: "Compare markets",
+      reset: "Reset",
+      fetchLive: "Fetch live prices",
+      fetching: "Fetching...",
+      liveOk: "Live prices loaded",
+      liveFail: "Live fetch failed - showing sample data",
+      liveSettings: "Live data settings",
+      liveHelp: "Get a free API key from",
+      liveHelp2: "(Register, then log in - My Account shows your API key), then paste it below. The shared demo key is rate-limited.",
+      apiKey: "Your data.gov.in API key",
+      corsProxy: "CORS proxy prefix (optional)",
+      liveNoKey: "Enter your data.gov.in API key above (free) to fetch live prices.",
+      liveNoMatch: "Live prices loaded, but none matched the crops/markets. Showing sample data.",
+      liveRateLimited: "API rate limit reached (HTTP 429). Get your own free key from data.gov.in.",
+      liveAuthFail: "API key rejected (HTTP 403). Please check your data.gov.in API key.",
+      recommendation: "Recommendation",
+      netComparison: "Net amount by market",
+      priceTrend: "7-day price trend",
+      results: "Market comparison",
+      market: "Market",
+      district: "District",
+      distance: "Distance",
+      price: "Modal price/Qtl",
+      gross: "Gross",
+      costs: "Costs",
+      net: "Net amount",
+      status: "Status",
+      openToday: "Open today",
+      closed: "Closed",
+      sample: "Sample data",
+      live: "Live data",
+      legendLocal: "Your market",
+      legendOpen: "Open today",
+      legendClosed: "Closed today",
+      enterQuantity: "Please enter a valid quantity.",
+      enterCrop: "Please choose a crop.",
+      enterMarket: "Please choose your nearest market."
+    },
+    ta: {
+      appTitle: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8 \u0BB5\u0BBF\u0BB2\u0BC8 \u0B92\u0BAA\u0BCD\u0BAA\u0BC0\u0B9F\u0BC1",
+      appSubtitle: "\u0B9A\u0BC6\u0BB2\u0BB5\u0BC1\u0B95\u0BB3\u0BC1\u0B95\u0BCD\u0B95\u0BC1\u0BAA\u0BCD \u0BAA\u0BBF\u0BA9\u0BCD \u0B85\u0BA4\u0BBF\u0B95 \u0BB5\u0BB0\u0BC1\u0BAE\u0BBE\u0BA9\u0BAE\u0BCD \u0BA4\u0BB0\u0BC1\u0BAE\u0BCD \u0B9A\u0BA8\u0BCD\u0BA4\u0BC8\u0BAF\u0BC8\u0B95\u0BCD \u0B95\u0BA3\u0BCD\u0B9F\u0BB1\u0BBF\u0BAF\u0BC1\u0B99\u0BCD\u0B95\u0BB3\u0BCD",
+      crop: "\u0BAA\u0BAF\u0BBF\u0BB0\u0BCD",
+      quantity: "\u0B85\u0BB3\u0BB5\u0BC1",
+      unit: "\u0B85\u0BB2\u0B95\u0BC1",
+      kg: "\u0B95\u0BBF\u0BB2\u0BCB",
+      quintal: "\u0B95\u0BBF\u0BA3\u0BCD\u0B9F\u0BBE\u0BB2\u0BCD",
+      tonne: "\u0B9F\u0BA9\u0BCD",
+      localMarket: "\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BC1\u0B95\u0BCD\u0B95\u0BC1 \u0B85\u0BB0\u0BC1\u0B95\u0BBF\u0BB2\u0BC1\u0BB3\u0BCD\u0BB3 \u0B9A\u0BA8\u0BCD\u0BA4\u0BC8",
+      transportRate: "\u0BAA\u0BCB\u0B95\u0BCD\u0B95\u0BC1\u0BB5\u0BB0\u0BA4\u0BCD\u0BA4\u0BC1 \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD (\u0BB0\u0BC2 / \u0B95\u0BBF.\u0BAE\u0BCD / \u0B95\u0BBF\u0BA3\u0BCD\u0B9F\u0BBE\u0BB2\u0BCD)",
+      advanced: "\u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0B9A\u0BC6\u0BB2\u0BB5\u0BC1\u0B95\u0BB3\u0BCD",
+      loading: "\u0B8F\u0BB1\u0BCD\u0BB1\u0BC1\u0BA4\u0BB2\u0BCD (\u0BB0\u0BC2)",
+      unloading: "\u0B87\u0BB1\u0B95\u0BCD\u0B95\u0BC1\u0BA4\u0BB2\u0BCD (\u0BB0\u0BC2)",
+      commission: "\u0BA4\u0BB0\u0B95\u0BCD\u0B95\u0BAE\u0BCD (%)",
+      mandiFee: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8 \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD (\u0BB0\u0BC2)",
+      fixedTransport: "\u0BA8\u0BBF\u0BB0\u0BCD\u0BA3\u0BAF \u0BAA\u0BCB\u0B95\u0BCD\u0B95\u0BC1\u0BB5\u0BB0\u0BA4\u0BCD\u0BA4\u0BC1 \u0B9A\u0BC6\u0BB2\u0BB5\u0BC1 (\u0BB0\u0BC2)",
+      compare: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BC8 \u0B92\u0BAA\u0BCD\u0BAA\u0BBF\u0B9F\u0BC1",
+      reset: "\u0BAE\u0BC0\u0B9F\u0BCD\u0B9F\u0BAE\u0BC8",
+      fetchLive: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BB5\u0BBF\u0BB2\u0BC8\u0B95\u0BB3\u0BC8\u0BAA\u0BCD \u0BAA\u0BC6\u0BB1\u0BC1",
+      fetching: "\u0BAA\u0BC6\u0BB1\u0BC1\u0B95\u0BBF\u0BB1\u0BA4\u0BC1...",
+      liveOk: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BB5\u0BBF\u0BB2\u0BC8\u0B95\u0BB3\u0BCD \u0BAA\u0BC6\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA9",
+      liveFail: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1 \u0BA4\u0BCB\u0BB2\u0BCD\u0BB5\u0BBF - \u0BAE\u0BBE\u0BA4\u0BBF\u0BB0\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0B95\u0BBF\u0BB1\u0BA4\u0BC1",
+      liveSettings: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1 \u0B85\u0BAE\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD",
+      liveHelp: "\u0B87\u0BB2\u0BB5\u0B9A \u0B8F\u0BAA\u0BBF \u0BB5\u0BBF\u0B9A\u0BC8\u0BAF\u0BC8\u0BAA\u0BCD \u0BAA\u0BC6\u0BB1\u0BC1\u0B99\u0BCD\u0B95\u0BB3\u0BCD:",
+      liveHelp2: "(Register \u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BC1, \u0B89\u0BB3\u0BCD\u0BA8\u0BC1\u0BB4\u0BC8\u0BA8\u0BCD\u0BA4\u0BC1 - My Account \u0BAA\u0B95\u0BCD\u0B95\u0BAE\u0BCD \u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD API key-\u0B90\u0B95\u0BCD \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD), \u0B85\u0BA4\u0BC8 \u0B95\u0BC0\u0BB4\u0BC7 \u0B92\u0B9F\u0BCD\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD. \u0BAA\u0B95\u0BBF\u0BB0\u0BCD\u0BA8\u0BCD\u0BA4 \u0B9F\u0BC6\u0BAE\u0BCB key \u0BB5\u0BB0\u0BAE\u0BCD\u0BAA\u0BC1 \u0B95\u0BC1\u0BB1\u0BC8\u0BA8\u0BCD\u0BA4\u0BA4\u0BC1.",
+      apiKey: "\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD data.gov.in API key",
+      corsProxy: "CORS \u0BAA\u0BCD\u0BB0\u0BBE\u0B95\u0BCD\u0B9A\u0BBF \u0BAE\u0BC1\u0BA9\u0BCD\u0BA9\u0BCA\u0B9F\u0BCD\u0B9F\u0BC1 (\u0BB5\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BAE\u0BCD)",
+      liveNoKey: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BB5\u0BBF\u0BB2\u0BC8\u0B95\u0BB3\u0BC8\u0BAA\u0BCD \u0BAA\u0BC6\u0BB1 \u0BAE\u0BC7\u0BB2\u0BC7 \u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD data.gov.in API key-\u0B90 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD.",
+      liveNoMatch: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BB5\u0BBF\u0BB2\u0BC8\u0B95\u0BB3\u0BCD \u0BAA\u0BC6\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA9, \u0B86\u0BA9\u0BBE\u0BB2\u0BCD \u0BAA\u0BAF\u0BBF\u0BB0\u0BCD/\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8 \u0BAA\u0BCA\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BB5\u0BC8 \u0B87\u0BB2\u0BCD\u0BB2\u0BC8. \u0BAE\u0BBE\u0BA4\u0BBF\u0BB0\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1.",
+      liveRateLimited: "API \u0BB5\u0BB0\u0BAE\u0BCD\u0BAA\u0BC1 \u0B8E\u0BB2\u0BCD\u0BB2\u0BC8 (HTTP 429). data.gov.in-\u0B87\u0BB2\u0BCD \u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B9A\u0BCA\u0BA8\u0BCD\u0BA4 API key \u0BAA\u0BC6\u0BB1\u0BC1\u0B99\u0BCD\u0B95\u0BB3\u0BCD.",
+      liveAuthFail: "API key \u0BA8\u0BBF\u0BB0\u0BBE\u0B95\u0BB0\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 (HTTP 403). data.gov.in API key-\u0B90\u0BAA\u0BCD \u0BAA\u0BB0\u0BBF\u0B9A\u0BCB\u0BA4\u0BBF\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD.",
+      recommendation: "\u0BAA\u0BB0\u0BBF\u0BA8\u0BCD\u0BA4\u0BC1\u0BB0\u0BC8",
+      netComparison: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8 \u0BB5\u0BBE\u0BB0\u0BBF\u0BAF\u0BBE\u0B95 \u0BA8\u0BBF\u0B95\u0BB0\u0BCD \u0BA4\u0BCA\u0B95\u0BC8",
+      priceTrend: "7 \u0BA8\u0BBE\u0B9F\u0BCD\u0B95\u0BB3\u0BCD \u0BB5\u0BBF\u0BB2\u0BC8 \u0BAA\u0BCB\u0B95\u0BCD\u0B95\u0BC1",
+      results: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8 \u0B92\u0BAA\u0BCD\u0BAA\u0BC0\u0B9F\u0BC1",
+      market: "\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8",
+      district: "\u0BAE\u0BBE\u0BB5\u0B9F\u0BCD\u0B9F\u0BAE\u0BCD",
+      distance: "\u0BA4\u0BCA\u0BB2\u0BC8",
+      price: "\u0BB5\u0BBF\u0BB2\u0BC8/\u0B95\u0BBF\u0BA3\u0BCD\u0B9F\u0BBE\u0BB2\u0BCD",
+      gross: "\u0BAE\u0BCA\u0BA4\u0BCD\u0BA4 \u0BB5\u0BB0\u0BC1\u0BAE\u0BBE\u0BA9\u0BAE\u0BCD",
+      costs: "\u0B9A\u0BC6\u0BB2\u0BB5\u0BC1\u0B95\u0BB3\u0BCD",
+      net: "\u0BA8\u0BBF\u0B95\u0BB0\u0BCD \u0BA4\u0BCA\u0B95\u0BC8",
+      status: "\u0BA8\u0BBF\u0BB2\u0BC8",
+      openToday: "\u0B87\u0BA9\u0BCD\u0BB1\u0BC1 \u0BA4\u0BBF\u0BB1\u0BA8\u0BCD\u0BA4\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BBF\u0BB1\u0BA4\u0BC1",
+      closed: "\u0BAE\u0BC2\u0B9F\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BC1\u0BB3\u0BCD\u0BB3\u0BA4\u0BC1",
+      sample: "\u0BAE\u0BBE\u0BA4\u0BBF\u0BB0\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1",
+      live: "\u0BA8\u0BC7\u0BB0\u0B9F\u0BBF \u0BA4\u0BB0\u0BB5\u0BC1",
+      legendLocal: "\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B9A\u0BA8\u0BCD\u0BA4\u0BC8",
+      legendOpen: "\u0B87\u0BA9\u0BCD\u0BB1\u0BC1 \u0BA4\u0BBF\u0BB1\u0BA8\u0BCD\u0BA4\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BBF\u0BB1\u0BA4\u0BC1",
+      legendClosed: "\u0B87\u0BA9\u0BCD\u0BB1\u0BC1 \u0BAE\u0BC2\u0B9F\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BC1\u0BB3\u0BCD\u0BB3\u0BA4\u0BC1",
+      enterQuantity: "\u0B9A\u0BB0\u0BBF\u0BAF\u0BBE\u0BA9 \u0B85\u0BB3\u0BB5\u0BC8 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD.",
+      enterCrop: "\u0B92\u0BB0\u0BC1 \u0BAA\u0BAF\u0BBF\u0BB0\u0BC8\u0BA4\u0BCD \u0BA4\u0BC7\u0BB0\u0BCD\u0BA8\u0BCD\u0BA4\u0BC6\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD.",
+      enterMarket: "\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B85\u0BB0\u0BC1\u0B95\u0BBF\u0BB2\u0BC1\u0BB3\u0BCD\u0BB3 \u0B9A\u0BA8\u0BCD\u0BA4\u0BC8\u0BAF\u0BC8\u0BA4\u0BCD \u0BA4\u0BC7\u0BB0\u0BCD\u0BA8\u0BCD\u0BA4\u0BC6\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD."
+    }
+  };
+
+  var current = "en";
+
+  function t(key) {
+    var table = STRINGS[current] || STRINGS.en;
+    return table[key] !== undefined ? table[key] : (STRINGS.en[key] || key);
+  }
+
+  function setLang(lang) {
+    current = STRINGS[lang] ? lang : "en";
+    return current;
+  }
+
+  function getLang() { return current; }
+
+  global.I18N = { t: t, setLang: setLang, getLang: getLang, strings: STRINGS };
+})(window);

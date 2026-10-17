@@ -1,0 +1,20 @@
+{
+  "name": "Farmer Market Price Compare",
+  "short_name": "Market Compare",
+  "description": "Compare Tamil Nadu market prices and find the mandi that pays the most after transport and fees.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#15803d",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

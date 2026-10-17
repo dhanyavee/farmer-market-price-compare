@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#15803d" />
+  <meta name="description" content="Compare Tamil Nadu market prices and find the mandi that pays you the most after transport and fees." />
+  <title>Market Price Compare</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/icons/icon.svg" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">&#127806;</span>
+      <div>
+        <h1 data-i18n="appTitle">Market Price Compare</h1>
+        <p data-i18n="appSubtitle">Find the market that pays you the most after expenses</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="dataBadge" class="badge badge-sample" data-i18n="sample">Sample data</span>
+      <button id="langToggle" class="ghost-btn" type="button">தமிழ்</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card form-card">
+      <form id="inputForm" novalidate>
+        <div class="grid">
+          <label class="field">
+            <span data-i18n="crop">Crop</span>
+            <select id="crop" required></select>
+          </label>
+
+          <label class="field">
+            <span data-i18n="localMarket">Your nearest market</span>
+            <select id="localMarket" required></select>
+          </label>
+
+          <div class="field">
+            <span data-i18n="quantity">Quantity</span>
+            <div class="row">
+              <input id="quantity" type="number" min="1" step="1" value="100" required />
+              <select id="unit" class="unit">
+                <option value="kg" data-i18n="kg">Kilogram</option>
+                <option value="quintal" data-i18n="quintal">Quintal</option>
+                <option value="tonne" data-i18n="tonne">Tonne</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="field">
+            <span data-i18n="transportRate">Transport rate (Rs / km / quintal)</span>
+            <input id="transportRate" type="number" min="0" step="0.5" value="4" />
+          </label>
+        </div>
+
+        <details class="advanced">
+          <summary data-i18n="advanced">Advanced costs</summary>
+          <div class="grid">
+            <label class="field">
+              <span data-i18n="loading">Loading (Rs)</span>
+              <input id="loading" type="number" min="0" step="10" value="150" />
+            </label>
+            <label class="field">
+              <span data-i18n="unloading">Unloading (Rs)</span>
+              <input id="unloading" type="number" min="0" step="10" value="100" />
+            </label>
+            <label class="field">
+              <span data-i18n="commission">Commission (%)</span>
+              <input id="commission" type="number" min="0" max="20" step="0.5" value="2" />
+            </label>
+            <label class="field">
+              <span data-i18n="mandiFee">Market fee (Rs)</span>
+              <input id="mandiFee" type="number" min="0" step="10" value="50" />
+            </label>
+            <label class="field">
+              <span data-i18n="fixedTransport">Fixed transport cost (Rs, optional)</span>
+              <input id="fixedTransport" type="number" min="0" step="50" value="0" />
+            </label>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button id="compareBtn" type="submit" class="primary-btn" data-i18n="compare">Compare markets</button>
+          <button id="resetBtn" type="button" class="ghost-btn" data-i18n="reset">Reset</button>
+          <button id="liveBtn" type="button" class="ghost-btn" data-i18n="fetchLive">Fetch live prices</button>
+        </div>
+        <details class="advanced">
+          <summary data-i18n="liveSettings">Live data settings</summary>
+          <p class="help">
+            <span data-i18n="liveHelp">Get a free API key from</span>
+            <a href="https://data.gov.in/user/register" target="_blank" rel="noopener">data.gov.in</a>
+            <span data-i18n="liveHelp2">(Register &rarr; login &rarr; My Account shows your API key), then paste it below. The shared demo key is rate-limited.</span>
+          </p>
+          <div class="grid">
+            <label class="field">
+              <span data-i18n="apiKey">Your data.gov.in API key</span>
+              <input id="apiKey" type="text" autocomplete="off" spellcheck="false" placeholder="579b464db66ec23bdd000001..." />
+            </label>
+            <label class="field">
+              <span data-i18n="corsProxy">CORS proxy prefix (optional)</span>
+              <input id="corsProxy" type="text" autocomplete="off" spellcheck="false" placeholder="https://api.allorigins.win/raw?url=" />
+            </label>
+          </div>
+        </details>
+        <p id="formError" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="resultsSection" class="results hidden">
+      <div class="card recommend-card">
+        <h2 data-i18n="recommendation">Recommendation</h2>
+        <p id="recommendText" class="recommend-text"></p>
+        <div id="recommendStats" class="stat-row"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="netComparison">Net amount by market</h2>
+        <div class="chart-wrap"><canvas id="netChart"></canvas></div>
+        <div class="legend" id="netLegend"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="priceTrend">7-day price trend</h2>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="results">Market comparison</h2>
+        <div class="table-scroll">
+          <table id="resultsTable">
+            <thead>
+              <tr>
+                <th data-i18n="market">Market</th>
+                <th data-i18n="district">District</th>
+                <th data-i18n="distance">Distance</th>
+                <th data-i18n="price">Modal price/Qtl</th>
+                <th data-i18n="gross">Gross</th>
+                <th data-i18n="costs">Costs</th>
+                <th data-i18n="net">Net amount</th>
+                <th data-i18n="status">Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <p class="footnote">
+      Production data source:
+      <a href="https://agmarknet.gov.in" target="_blank" rel="noopener">AGMARKNET</a> /
+      <a href="https://data.gov.in" target="_blank" rel="noopener">data.gov.in</a> /
+      <a href="https://www.enam.gov.in" target="_blank" rel="noopener">e-NAM</a>.
+      Prices shown are indicative sample data for demonstration.
+    </p>
+  </main>
+
+  <script src="assets/vendor/chart.umd.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/recommend.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
