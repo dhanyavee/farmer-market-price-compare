@@ -11,5 +11,5 @@
  *   window.APP_CONFIG = { liveApiBase: "https://agri-api.your-domain.com" };
  */
 window.APP_CONFIG = {
-  liveApiBase: ""
+  liveApiBase: "https://agri-api.cloudnodes.cc"
 };
