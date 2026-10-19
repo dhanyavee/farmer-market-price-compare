@@ -7,7 +7,7 @@
   var t = window.I18N.t;
 
   var el = {};
-  var state = { dataMode: "sample", live: {}, lastResult: null };
+  var state = { lastResult: null };
 
   function $(id) { return document.getElementById(id); }
 
@@ -16,7 +16,7 @@
       "unloading", "commission", "mandiFee", "fixedTransport", "inputForm",
       "resultsSection", "recommendText", "recommendStats", "netChart",
       "trendChart", "resultsTable", "formError", "dataBadge", "langToggle",
-      "netLegend", "compareBtn", "resetBtn", "liveBtn", "apiKey", "corsProxy"].forEach(function (id) {
+      "netLegend", "compareBtn", "resetBtn", "liveBtn"].forEach(function (id) {
       el[id] = $(id);
     });
   }
@@ -48,11 +48,6 @@
   function num(id) { return Number(el[id].value) || 0; }
 
   function priceFor(cropId, marketId) {
-    var key = cropId + "|" + marketId;
-    if (state.live[key]) {
-      var live = state.live[key];
-      return { date: live.date, min: live.min, modal: live.modal, max: live.max };
-    }
     return D.getLatestPrice(cropId, marketId);
   }
 
@@ -69,13 +64,24 @@
   }
 
   function updateBadge() {
-    if (state.dataMode === "live") {
-      el.dataBadge.textContent = t("live");
+    if (D.getSource() === "agrimark") {
+      var meta = D.getMeta();
+      el.dataBadge.textContent = t("live") + " \u00B7 " + (meta.dateDisplay || "");
       el.dataBadge.className = "badge badge-live";
     } else {
       el.dataBadge.textContent = t("sample");
       el.dataBadge.className = "badge badge-sample";
     }
+  }
+
+  function filterByRadius(markets, localId, maxKm) {
+    var local = D.getMarket(localId);
+    if (!local) return markets;
+    return markets.filter(function (m) {
+      if (m.id === localId) return true;
+      if (m.district && local.district && m.district === local.district) return true;
+      return D.haversineKm(local.lat, local.lon, m.lat, m.lon) <= maxKm;
+    });
   }
 
   function validate() {
@@ -103,8 +109,12 @@
     if (!validate()) return;
     var cfg = collectConfig();
     var cropId = el.crop.value;
+    var markets = D.getMarkets();
+    if (D.getSource() === "agrimark") {
+      markets = filterByRadius(markets, cfg.localMarketId, 150);
+    }
     var results = C.computeAll({
-      markets: D.getMarkets(),
+      markets: markets,
       localMarketId: cfg.localMarketId,
       quantityKg: cfg.quantityKg,
       ratePerKmPerQuintal: cfg.ratePerKmPerQuintal,
@@ -141,14 +151,21 @@
     renderTable(ranked, localId);
     renderLegend();
 
-    window.MarketCharts.renderNetChart(el.netChart, ranked.ranked, localId, lang);
+    window.MarketCharts.renderNetChart(el.netChart, ranked.ranked.slice(0, 15), localId, lang);
 
     var topId = best.result.market.id;
-    var seriesList = [D.getPriceSeries(payload.cropId, topId, 7)];
-    var names = [marketName(best.result.market)];
-    if (localId !== topId) {
-      seriesList.push(D.getPriceSeries(payload.cropId, localId, 7));
-      names.push(marketName(D.getMarket(localId)));
+    var seriesList;
+    var names;
+    if (D.getSource() === "agrimark") {
+      seriesList = [D.getPriceSeries(payload.cropId, topId, 7)];
+      names = [t("tnAverage")];
+    } else {
+      seriesList = [D.getPriceSeries(payload.cropId, topId, 7)];
+      names = [marketName(best.result.market)];
+      if (localId !== topId) {
+        seriesList.push(D.getPriceSeries(payload.cropId, localId, 7));
+        names.push(marketName(D.getMarket(localId)));
+      }
     }
     window.MarketCharts.renderTrendChart(el.trendChart, seriesList, names, lang);
   }
@@ -209,8 +226,8 @@
 
   function resetForm() {
     el.inputForm.reset();
-    el.crop.value = D.getCrops()[0].id;
-    el.localMarket.value = "dindigul";
+    el.crop.value = "";
+    el.localMarket.value = "";
     el.quantity.value = 100;
     el.unit.value = "kg";
     el.transportRate.value = 4;
@@ -219,105 +236,63 @@
     el.commission.value = 2;
     el.mandiFee.value = 50;
     el.fixedTransport.value = 0;
+    setDefaultsIfNeeded(null);
     el.formError.textContent = "";
     state.lastResult = null;
     el.resultsSection.classList.add("hidden");
   }
 
-  function matchLivePrices(records) {
-    var crops = D.getCrops();
-    var markets = D.getMarkets();
-    var matched = 0;
-    var overlay = {};
-    records.forEach(function (rec) {
-      var commodity = String(rec.commodity || "").toLowerCase();
-      var marketNameLive = String(rec.market || "").toLowerCase();
-      var crop = crops.filter(function (c) {
-        return commodity === c.en.toLowerCase() || commodity.indexOf(c.en.toLowerCase()) !== -1;
-      })[0];
-      if (!crop) return;
-      var market = markets.filter(function (m) {
-        var short = m.en.split(" (")[0].toLowerCase();
-        return marketNameLive === short || marketNameLive.indexOf(short) !== -1 || short.indexOf(marketNameLive) !== -1;
-      })[0];
-      if (!market) return;
-      var modal = Number(rec.modal_price);
-      if (!modal) return;
-      overlay[crop.id + "|" + market.id] = {
-        date: rec.arrival_date || "",
-        min: Number(rec.min_price) || modal,
-        modal: modal,
-        max: Number(rec.max_price) || modal
-      };
-      matched++;
-    });
-    return { overlay: overlay, matched: matched };
-  }
-
-  function fetchLive() {
-    var apiKey = (el.apiKey.value || "").trim();
-    var proxy = (el.corsProxy.value || "").trim();
-    saveSettings(apiKey, proxy);
-
+  function loadAgrimark() {
+    var wasLive = D.getSource() === "agrimark";
     el.liveBtn.disabled = true;
     el.liveBtn.textContent = t("fetching");
     el.formError.textContent = "";
 
-    if (!apiKey) {
-      el.liveBtn.disabled = false;
-      el.liveBtn.textContent = t("fetchLive");
-      el.formError.textContent = t("liveNoKey");
-      return;
-    }
-
-    D.fetchLivePrices(apiKey, proxy).then(function (payload) {
-      var records = (payload && payload.records) || [];
-      var result = matchLivePrices(records);
-      if (result.matched > 0) {
-        state.live = result.overlay;
-        state.dataMode = "live";
-        updateBadge();
-        if (state.lastResult) run();
-      } else {
-        state.dataMode = "sample";
-        updateBadge();
-        el.formError.textContent = t("liveNoMatch");
-      }
-    }).catch(function (err) {
-      state.dataMode = "sample";
+    D.loadAgrimark().then(function (payload) {
+      D.useAgrimark(payload);
       updateBadge();
-      var msg = String(err && err.message || err);
-      if (msg.indexOf("RATE_LIMIT") !== -1) el.formError.textContent = t("liveRateLimited");
-      else if (msg.indexOf("AUTH") !== -1) el.formError.textContent = t("liveAuthFail");
-      else el.formError.textContent = t("liveFail");
+      var prevCrop = el.crop.value;
+      rebuildOptions();
+      setDefaultsIfNeeded(prevCrop);
+      run();
+    }).catch(function () {
+      if (wasLive) {
+        el.formError.textContent = t("liveUnavailable");
+        return;
+      }
+      D.useSample();
+      updateBadge();
+      el.formError.textContent = t("liveUnavailable");
     }).then(function () {
       el.liveBtn.disabled = false;
-      el.liveBtn.textContent = t("fetchLive");
+      el.liveBtn.textContent = t("liveFetch");
     });
   }
 
-  function saveSettings(apiKey, proxy) {
-    try {
-      localStorage.setItem("mpc_api_key", apiKey);
-      localStorage.setItem("mpc_cors_proxy", proxy);
-    } catch (e) {}
-  }
-
-  function loadSettings() {
-    var apiKey = "";
-    var proxy = "";
-    try {
-      apiKey = localStorage.getItem("mpc_api_key") || "";
-      proxy = localStorage.getItem("mpc_cors_proxy") || "";
-    } catch (e) {}
-    el.apiKey.value = apiKey;
-    el.corsProxy.value = proxy;
+  function setDefaultsIfNeeded(prevCrop) {
+    var crops = D.getCrops();
+    var markets = D.getMarkets();
+    var cropExists = crops.filter(function (c) { return String(c.id) === String(prevCrop); }).length > 0;
+    if (!cropExists) el.crop.value = crops[0].id;
+    var marketExists = markets.filter(function (m) { return m.id === el.localMarket.value; }).length > 0;
+    if (!marketExists) {
+      if (D.getSource() === "agrimark") {
+        el.localMarket.value = D.getDefaultMarketId(el.crop.value);
+      } else {
+        var preferred = ["Dindigul", "Madurai", "Chennai", "Coimbatore"];
+        var pick = null;
+        for (var i = 0; i < preferred.length && !pick; i++) {
+          pick = markets.filter(function (m) { return m.en === preferred[i]; })[0] || null;
+        }
+        el.localMarket.value = (pick || markets[0]).id;
+      }
+    }
   }
 
   function bind() {
     el.inputForm.addEventListener("submit", function (e) { e.preventDefault(); run(); });
     el.resetBtn.addEventListener("click", resetForm);
-    el.liveBtn.addEventListener("click", fetchLive);
+    el.liveBtn.addEventListener("click", loadAgrimark);
     el.langToggle.addEventListener("click", function () {
       window.I18N.setLang(window.I18N.getLang() === "ta" ? "en" : "ta");
       applyStaticText();
@@ -343,7 +318,6 @@
     window.I18N.setLang("en");
     applyStaticText();
     setDefaults();
-    loadSettings();
     bind();
     run();
     registerServiceWorker();

@@ -75,27 +75,107 @@
     return { date: dayKey(dayOffset), min: min, modal: modal, max: max };
   }
 
-  function getCrops() { return CROPS; }
-  function getMarkets() { return MARKETS; }
-  function getCrop(id) { return CROPS.filter(function (c) { return c.id === id; })[0] || null; }
-  function getMarket(id) { return MARKETS.filter(function (m) { return m.id === id; })[0] || null; }
+  var ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+  var source = "sample";
+  var agrimark = null;
+
+  function useSample() { source = "sample"; return source; }
+  function useAgrimark(payload) { agrimark = payload; source = "agrimark"; return source; }
+  function getSource() { return source; }
+
+  function amCrops() {
+    if (!agrimark) return CROPS;
+    return agrimark.crops.map(function (c) {
+      return { id: String(c.id), en: c.name, ta: c.name, base: 0 };
+    });
+  }
+
+  function amMarkets() {
+    if (!agrimark) return MARKETS;
+    return Object.keys(agrimark.markets).map(function (key) {
+      var m = agrimark.markets[key];
+      return {
+        id: key,
+        en: m.name,
+        ta: m.ta || m.name,
+        district: m.district || "",
+        lat: m.lat,
+        lon: m.lon,
+        openDays: ALL_DAYS
+      };
+    }).sort(function (a, b) { return a.en.localeCompare(b.en); });
+  }
+
+  function getCrops() { return source === "agrimark" ? amCrops() : CROPS; }
+  function getMarkets() { return source === "agrimark" ? amMarkets() : MARKETS; }
+  function getCrop(id) {
+    var list = getCrops();
+    return list.filter(function (c) { return String(c.id) === String(id); })[0] || null;
+  }
+  function getMarket(id) {
+    var list = getMarkets();
+    return list.filter(function (m) { return String(m.id) === String(id); })[0] || null;
+  }
 
   function getPriceSeries(cropId, marketId, days) {
+    var n = typeof days === "number" ? days : 7;
+    var out = [];
+    if (source === "agrimark") {
+      var hist = getHistory(cropId);
+      var slice = hist.slice(-n);
+      return slice.map(function (e) {
+        return {
+          date: e.date,
+          min: round(e.avg * 100 * 0.9),
+          modal: round(e.avg * 100),
+          max: round(e.avg * 100 * 1.1)
+        };
+      });
+    }
     var crop = getCrop(cropId);
     var market = getMarket(marketId);
     if (!crop || !market) return [];
-    var out = [];
-    var n = typeof days === "number" ? days : 7;
     for (var i = n - 1; i >= 0; i--) out.push(priceFor(crop, market, -i));
     return out;
   }
 
   function getLatestPrice(cropId, marketId) {
+    if (source === "agrimark") {
+      var rec = agrimark && agrimark.prices[cropId] && agrimark.prices[cropId][marketId];
+      if (!rec) return null;
+      return {
+        date: agrimark.date,
+        min: round(rec.min * 100),
+        modal: round(rec.modal * 100),
+        max: round(rec.max * 100),
+        qty: rec.qty
+      };
+    }
     var crop = getCrop(cropId);
     var market = getMarket(marketId);
     if (!crop || !market) return null;
     return priceFor(crop, market, 0);
   }
+
+  function getHistory(cropId) {
+    if (!agrimark || !agrimark.history) return [];
+    return agrimark.history[String(cropId)] || [];
+  }
+
+  function getMeta() {
+    if (source === "agrimark" && agrimark) {
+      return {
+        source: agrimark.source,
+        sourceUrl: agrimark.sourceUrl,
+        date: agrimark.date,
+        dateDisplay: agrimark.dateDisplay,
+        unitPerKg: true
+      };
+    }
+    return { source: "Sample data", sourceUrl: "", date: null, unitPerKg: false };
+  }
+
+  function round(n) { return Math.round(Number(n) * 100) / 100; }
 
   function isOpenToday(market, date) {
     var d = date || new Date();
@@ -123,27 +203,48 @@
     return Math.round(R * c * 1.3 * 10) / 10;
   }
 
-  var LIVE_RESOURCE = "9ef84268-d588-465a-a308-a864a43d0070";
-  var DEMO_API_KEY = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
-
-  function buildLiveUrl(apiKey, proxyPrefix) {
-    var base = "https://api.data.gov.in/resource/" + LIVE_RESOURCE +
-      "?api-key=" + encodeURIComponent(apiKey || DEMO_API_KEY) +
-      "&format=json&limit=200";
-    if (proxyPrefix) return proxyPrefix + encodeURIComponent(base);
-    return base;
+  function getDefaultMarketId(cropId) {
+    if (source !== "agrimark" || !agrimark) return "dindigul";
+    var coverage = {};
+    Object.keys(agrimark.prices).forEach(function (c) {
+      Object.keys(agrimark.prices[c]).forEach(function (m) {
+        coverage[m] = (coverage[m] || 0) + 1;
+      });
+    });
+    var candidates = (cropId && agrimark.prices[cropId])
+      ? Object.keys(agrimark.prices[cropId])
+      : Object.keys(agrimark.markets);
+    var best = null;
+    var bestCov = -1;
+    candidates.forEach(function (m) {
+      var c = coverage[m] || 0;
+      if (c > bestCov) { bestCov = c; best = m; }
+    });
+    return best || Object.keys(agrimark.markets)[0];
   }
 
-  function fetchLivePrices(apiKey, proxyPrefix) {
-    var url = buildLiveUrl(apiKey, proxyPrefix);
-    return fetch(url, { headers: { Accept: "application/json" } }).then(function (r) {
-      if (r.status === 429) throw new Error("RATE_LIMIT");
-      if (r.status === 401 || r.status === 403) throw new Error("AUTH");
+  function agrimarkUrl() {
+    var cfg = global.APP_CONFIG || {};
+    var base = String(cfg.liveApiBase || "").replace(/\/+$/, "");
+    return base ? base + "/api/agrimark.json" : "data/agrimark.json";
+  }
+
+  function fetchAgrimark(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
       if (!r.ok) throw new Error("HTTP_" + r.status);
       return r.json();
     }).then(function (payload) {
-      if (payload && payload.error) throw new Error("API_" + payload.error);
+      if (!payload || !payload.prices || !payload.markets) throw new Error("BAD_DATA");
+      if (!Object.keys(payload.prices).length) throw new Error("EMPTY_PRICES");
       return payload;
+    });
+  }
+
+  function loadAgrimark() {
+    var primary = agrimarkUrl();
+    return fetchAgrimark(primary).catch(function (err) {
+      if (primary === "data/agrimark.json") throw err;
+      return fetchAgrimark("data/agrimark.json");
     });
   }
 
@@ -154,10 +255,15 @@
     getMarket: getMarket,
     getPriceSeries: getPriceSeries,
     getLatestPrice: getLatestPrice,
+    getHistory: getHistory,
+    getMeta: getMeta,
+    getDefaultMarketId: getDefaultMarketId,
     isOpenToday: isOpenToday,
     nextOpenDay: nextOpenDay,
     haversineKm: haversineKm,
-    fetchLivePrices: fetchLivePrices,
-    DEMO_API_KEY: DEMO_API_KEY
+    loadAgrimark: loadAgrimark,
+    useSample: useSample,
+    useAgrimark: useAgrimark,
+    getSource: getSource
   };
 })(window);

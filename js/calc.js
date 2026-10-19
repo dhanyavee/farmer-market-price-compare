@@ -58,9 +58,12 @@
   }
 
   function computeAll(config) {
-    var markets = config.markets || [];
+    var all = config.markets || [];
     var localId = config.localMarketId;
-    var local = markets.filter(function (m) { return m.id === localId; })[0] || null;
+    var local = all.filter(function (m) { return m.id === localId; })[0] || null;
+    var markets = all.filter(function (m) {
+      return !!config.priceLookup(m.id);
+    });
 
     return markets.map(function (m) {
       var price = config.priceLookup(m.id);

@@ -1,8 +1,9 @@
-var CACHE = "mpc-v1";
+var CACHE = "mpc-v3";
 var ASSETS = [
   "./",
   "./index.html",
   "./css/style.css",
+  "./js/config.js",
   "./js/i18n.js",
   "./js/data.js",
   "./js/calc.js",
@@ -11,13 +12,16 @@ var ASSETS = [
   "./js/app.js",
   "./assets/vendor/chart.umd.min.js",
   "./assets/icons/icon.svg",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./data/agrimark.json"
 ];
 
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      return cache.addAll(ASSETS);
+      return Promise.all(ASSETS.map(function (url) {
+        return cache.add(url).catch(function () { return null; });
+      }));
     }).then(function () {
       return self.skipWaiting();
     })
@@ -42,6 +46,19 @@ self.addEventListener("fetch", function (event) {
   if (request.method !== "GET") return;
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.indexOf("/data/") !== -1) {
+    event.respondWith(
+      fetch(request).then(function (response) {
+        var copy = response.clone();
+        caches.open(CACHE).then(function (cache) { cache.put(request, copy); });
+        return response;
+      }).catch(function () {
+        return caches.match(request);
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then(function (cached) {

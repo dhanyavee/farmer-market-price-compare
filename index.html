@@ -87,26 +87,13 @@
         <div class="actions">
           <button id="compareBtn" type="submit" class="primary-btn" data-i18n="compare">Compare markets</button>
           <button id="resetBtn" type="button" class="ghost-btn" data-i18n="reset">Reset</button>
-          <button id="liveBtn" type="button" class="ghost-btn" data-i18n="fetchLive">Fetch live prices</button>
+          <button id="liveBtn" type="button" class="ghost-btn" data-i18n="liveFetch">Load TN Agri live prices</button>
         </div>
-        <details class="advanced">
-          <summary data-i18n="liveSettings">Live data settings</summary>
-          <p class="help">
-            <span data-i18n="liveHelp">Get a free API key from</span>
-            <a href="https://data.gov.in/user/register" target="_blank" rel="noopener">data.gov.in</a>
-            <span data-i18n="liveHelp2">(Register &rarr; login &rarr; My Account shows your API key), then paste it below. The shared demo key is rate-limited.</span>
-          </p>
-          <div class="grid">
-            <label class="field">
-              <span data-i18n="apiKey">Your data.gov.in API key</span>
-              <input id="apiKey" type="text" autocomplete="off" spellcheck="false" placeholder="579b464db66ec23bdd000001..." />
-            </label>
-            <label class="field">
-              <span data-i18n="corsProxy">CORS proxy prefix (optional)</span>
-              <input id="corsProxy" type="text" autocomplete="off" spellcheck="false" placeholder="https://api.allorigins.win/raw?url=" />
-            </label>
-          </div>
-        </details>
+        <p class="help" id="liveNote">
+          <span data-i18n="liveNote">Live prices come from the Tamil Nadu Agricultural Marketing Department</span>
+          (<a href="https://www.agrimark.tn.gov.in/" target="_blank" rel="noopener">agrimark.tn.gov.in</a>),
+          <span data-i18n="liveNote2">refreshed daily by the project's scraper.</span>
+        </p>
         <p id="formError" class="error" role="alert"></p>
       </form>
     </section>
@@ -152,15 +139,18 @@
     </section>
 
     <p class="footnote">
-      Production data source:
-      <a href="https://agmarknet.gov.in" target="_blank" rel="noopener">AGMARKNET</a> /
-      <a href="https://data.gov.in" target="_blank" rel="noopener">data.gov.in</a> /
+      Data source:
+      <a href="https://www.agrimark.tn.gov.in/" target="_blank" rel="noopener">Tamil Nadu Dept. of Agricultural Marketing (agrimark.tn.gov.in)</a>
+      &middot;
+      <a href="https://agmarknet.gov.in" target="_blank" rel="noopener">AGMARKNET</a>
+      &middot;
       <a href="https://www.enam.gov.in" target="_blank" rel="noopener">e-NAM</a>.
-      Prices shown are indicative sample data for demonstration.
+      Live prices are scraped daily; sample data is shown when offline.
     </p>
   </main>
 
   <script src="assets/vendor/chart.umd.min.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
   <script src="js/calc.js"></script>

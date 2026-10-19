@@ -1,0 +1,30 @@
+[Unit]
+Description=agrimark live API proxy (farmer-market-price-compare)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Edit User/Group and paths to match your server checkout.
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/farmer-market-price-compare
+
+Environment=BASE_DATA=/opt/farmer-market-price-compare/data/agrimark.json
+Environment=HOST=127.0.0.1
+Environment=PORT=8080
+Environment=CACHE_TTL=600
+Environment=CROP_CACHE_TTL=300
+Environment=MAX_CROPS=0
+Environment=CONCURRENCY=8
+# Lock the API to your site's origin(s). Use * to allow any origin.
+Environment=ALLOWED_ORIGINS=https://dhanyavee.github.io
+
+ExecStart=/usr/bin/python3 /opt/farmer-market-price-compare/server/agrimark_api.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

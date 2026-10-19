@@ -22,43 +22,61 @@ net_amount     = gross - transport - fees
 The recommendation ranks markets by `net_amount`, only recommending markets that are
 **open today**, and reports the gain versus the farmer's nearest market.
 
-## Live prices (why it failed, and how to fix it)
+## Live prices (Tamil Nadu Agricultural Marketing Dept)
 
-The **Fetch live prices** button calls the data.gov.in mandi-price API. It reports
-`Live fetch failed` when the request cannot be used. The most common cause is:
+The clearest source for Tamil Nadu is the Department of Agricultural Marketing &
+Agri Business portal **<https://www.agrimark.tn.gov.in/>**, which publishes current
+Uzhavar Sandhai prices for every district.
 
-**HTTP 429 - "Rate limit exceeded".** The API key shipped in the app is data.gov.in's
-*shared demo key*; it is used by everyone and is almost always rate-limited now.
+That portal has **no CORS headers**, so a browser page cannot call it directly.
+Two pieces handle that:
 
-Fix it with your **own free key**:
+- `scripts/scrape_agrimark.py` fetches, for all 38 districts:
+  - `POST /home/getUSList` (`district=<id>`) - the market list (English + Tamil names)
+  - `POST /home/us_dist_report_api/<dd-mm-yyyy>/<crop_id>` - prices per market
+  and writes `data/agrimark.json` (markets, crops, prices and a rolling 30-day
+  history). This ships with the app as the **offline fallback** and as the seed
+  for the live API's market list and history. Run it once (and periodically) on
+  the server:
+  ```
+  python3 scripts/scrape_agrimark.py
+  ```
+- `server/agrimark_api.py` is a small server-side proxy that fetches the portal
+  live and serves it **with CORS headers**. Run it on your own server (e.g.
+  Oracle Cloud, Hyderabad) behind a Cloudflare Tunnel and point `liveApiBase`
+  in `js/config.js` at it. Full steps: [server/README.md](server/README.md).
 
-1. Register at <https://data.gov.in/user/register> and confirm your email.
-2. Log in and open **My Account** - your **API key** is shown there.
-3. In the app, open **Live data settings**, paste the key into
-   *Your data.gov.in API key*, and press **Fetch live prices** again.
+In the app, press **Load TN Agri live prices**: it reads the live proxy if
+configured, otherwise the bundled `data/agrimark.json`, and falls back to the
+built-in sample data if neither is available. The badge shows the source date.
+Prices from the portal are per **kg**; the app converts them to per quintal.
 
-The key is saved in your browser (localStorage), so you only enter it once.
+### Why not scrape in the browser?
 
-Other error reasons the app now reports:
+A GitHub Pages site is served from a different origin than `agrimark.tn.gov.in`,
+and that server sends no `Access-Control-Allow-Origin` header, so browsers block
+the request. Scraping on a schedule and publishing a JSON file is the reliable,
+standard workaround.
 
-| Message | Meaning |
-| --- | --- |
-| `API rate limit reached (HTTP 429)` | Key is throttled - use your own key |
-| `API key rejected (HTTP 403)` | Wrong/unauthorised key |
-| `Live fetch failed` | Network down, or the browser blocked the request (CORS) |
-| `Live prices loaded, but none matched...` | API returned data but not for the selected crops/markets |
+A server-side proxy is the other option: it fetches the portal server-to-server
+and returns the data to the browser *with* CORS headers, giving true real-time
+prices. This project includes one such proxy:
 
-**If it still fails with a plain network error (CORS):** some browsers block direct
-calls to data.gov.in. Put a CORS-proxy prefix in *CORS proxy prefix (optional)*, for
-example:
+- `server/` - a dependency-free Python service for **your own server** (e.g.
+  Oracle Cloud, Hyderabad). Its Indian IP is accepted by agrimark. See
+  [server/README.md](server/README.md).
 
+## Live API on your own server
+
+`server/agrimark_api.py` is a small stdlib-only Python service that mirrors the
+Worker and has no subrequest limits (all 50 crops in one build). Expose it
+through a Cloudflare Tunnel (no open ports, no certificates to manage) and point
+the app at it. Full steps: [server/README.md](server/README.md).
+
+```js
+// js/config.js
+window.APP_CONFIG = { liveApiBase: "https://agri-api.your-domain.com" };
 ```
-https://api.allorigins.win/raw?url=
-https://corsproxy.io/?url=
-```
-
-The app wraps the API URL with that prefix. The sample data remains the reliable
-default for the exhibition, so the demo never depends on the network.
 
 ## Run it
 
@@ -80,16 +98,22 @@ python3 -m http.server 8000
 ```
 index.html               UI: input form, recommendation, charts, table
 css/style.css            responsive styling
-js/data.js               sample crops/markets, prices, distance (haversine)
+js/config.js             runtime config (optional live API URL)
+js/data.js               sample + agrimark data layer, distance (haversine)
 js/calc.js               net-amount math (unit-safe)
 js/recommend.js          ranking engine + human-readable reason
 js/charts.js             Chart.js net comparison + 7-day trend
 js/i18n.js               English / Tamil strings
 js/app.js                wiring
+scripts/scrape_agrimark.py   scraper for agrimark.tn.gov.in -> data/agrimark.json
+scripts/set_live_api.sh  point js/config.js at a live API URL
+data/agrimark.json       base market data + offline fallback
+server/agrimark_api.py   live CORS API proxy (stdlib Python) for your own server
+server/agrimark-api.service / README.md   server deploy files (Cloudflare Tunnel)
 assets/vendor/           Chart.js (vendored for offline use)
 assets/icons/            app icon
 manifest.webmanifest     PWA metadata
-sw.js                    offline cache
+sw.js                    offline cache (network-first for data/)
 ```
 
 ## Deploy (free)
@@ -110,11 +134,16 @@ sw.js                    offline cache
 5. Show the **7-day price trend** to say the price is rising/falling.
 6. Sustainability: fewer wasted trips, faster selling at the right market, less spoilage
    and food waste, higher farmer income. Tap **தமிழ்** to show local-language support.
-7. Optional: tap **Fetch live prices** to show the AGMARKNET/data.gov.in integration path.
+7. Tap **Load TN Agri live prices** to switch to today's real Uzhavar Sandhai
+   prices for all 38 districts (badge shows the date), then press **Compare markets**.
 
 ## Notes
 
+- Two data sources: the built-in **sample** data (offline, 15 big mandis) and the
+  **agrimark** live file (194 Uzhavar Sandhais, real per-kg prices). Press
+  **Load TN Agri live prices** to switch; the sample data loads by default.
+- In agrimark mode, distances use **district-headquarter coordinates**, and the
+  comparison is limited to markets within 150 km (plus the whole local district).
+  The 7-day trend uses the crop's TN-wide average from the scraper's history.
 - Sample prices are generated deterministically relative to today's date, so results
   are stable per day but vary across days (prices and market open-days).
-- The live button calls the data.gov.in mandi resource and maps records by crop and
-  market name; if the network or the API is unavailable it silently keeps sample data.
