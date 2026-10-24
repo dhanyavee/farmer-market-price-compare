@@ -1,4 +1,5 @@
-var CACHE = "mpc-v3";
+var CACHE = "mpc-v11";
+var TILE_CACHE = "mpc-tiles-v1";
 var ASSETS = [
   "./",
   "./index.html",
@@ -9,8 +10,11 @@ var ASSETS = [
   "./js/calc.js",
   "./js/recommend.js",
   "./js/charts.js",
+  "./js/map.js",
   "./js/app.js",
   "./assets/vendor/chart.umd.min.js",
+  "./assets/vendor/maplibre/maplibre-gl.js",
+  "./assets/vendor/maplibre/maplibre-gl.css",
   "./assets/icons/icon.svg",
   "./manifest.webmanifest",
   "./data/agrimark.json"
@@ -32,7 +36,7 @@ self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (key) {
-        if (key !== CACHE) return caches.delete(key);
+        if (key !== CACHE && key !== TILE_CACHE) return caches.delete(key);
         return null;
       }));
     }).then(function () {
@@ -41,10 +45,30 @@ self.addEventListener("activate", function (event) {
   );
 });
 
+function tileStrategy(request) {
+  return caches.open(TILE_CACHE).then(function (cache) {
+    return cache.match(request).then(function (hit) {
+      if (hit) return hit;
+      return fetch(request).then(function (response) {
+        if (response && response.status === 200) cache.put(request, response.clone());
+        return response;
+      }).catch(function () {
+        return Response.error();
+      });
+    });
+  });
+}
+
 self.addEventListener("fetch", function (event) {
   var request = event.request;
   if (request.method !== "GET") return;
   var url = new URL(request.url);
+
+  if (/(^|\.)(tiles\.openfreemap\.org|tile\.openstreetmap\.org)$/.test(url.hostname)) {
+    event.respondWith(tileStrategy(request));
+    return;
+  }
+
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.indexOf("/data/") !== -1) {

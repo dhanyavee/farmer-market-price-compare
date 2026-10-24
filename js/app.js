@@ -16,7 +16,7 @@
       "unloading", "commission", "mandiFee", "fixedTransport", "inputForm",
       "resultsSection", "recommendText", "recommendStats", "netChart",
       "trendChart", "resultsTable", "formError", "dataBadge", "langToggle",
-      "netLegend", "compareBtn", "resetBtn", "liveBtn"].forEach(function (id) {
+      "netLegend", "compareBtn", "resetBtn", "liveBtn", "map"].forEach(function (id) {
       el[id] = $(id);
     });
   }
@@ -168,6 +168,17 @@
       }
     }
     window.MarketCharts.renderTrendChart(el.trendChart, seriesList, names, lang);
+
+    if (window.MarketMap) {
+      window.MarketMap.init("map");
+      window.MarketMap.render(ranked, localId, lang, {
+        onUseMarket: function (id) {
+          el.localMarket.value = id;
+          run();
+        }
+      });
+      setTimeout(function () { window.MarketMap.invalidate(); }, 0);
+    }
   }
 
   function addStat(container, label, value, cls) {
@@ -296,6 +307,9 @@
     el.langToggle.addEventListener("click", function () {
       window.I18N.setLang(window.I18N.getLang() === "ta" ? "en" : "ta");
       applyStaticText();
+    });
+    window.addEventListener("resize", function () {
+      if (window.MarketMap) window.MarketMap.invalidate();
     });
   }
 

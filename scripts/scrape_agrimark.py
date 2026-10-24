@@ -25,6 +25,7 @@ from datetime import datetime, timezone, timedelta
 BASE = "https://www.agrimark.tn.gov.in"
 IST = timezone(timedelta(hours=5, minutes=30))
 OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "agrimark.json")
+GEO_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "markets_geo.json")
 HISTORY_DAYS = 30
 
 HEADERS = {
@@ -111,7 +112,16 @@ def post(path, data=None, retries=3):
     return None
 
 
+def load_geo():
+    try:
+        with open(GEO_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
 def fetch_markets():
+    geo = load_geo()
     markets = {}
     for dist_id, (dist_name, lat, lon) in DISTRICTS.items():
         rows = post("/home/getUSList", {"district": dist_id}) or []
@@ -119,14 +129,19 @@ def fetch_markets():
             name = (row.get("us_name") or "").strip()
             if not name:
                 continue
+            market_lat, market_lon = lat, lon
+            hit = geo.get(name)
+            if hit and hit.get("lat") is not None and hit.get("lon") is not None:
+                market_lat, market_lon = hit["lat"], hit["lon"]
             markets[name] = {
                 "id": str(row.get("master_us_id") or ""),
                 "name": name,
                 "ta": (row.get("tamil_us_name") or "").strip(),
                 "districtId": dist_id,
                 "district": dist_name,
-                "lat": lat,
-                "lon": lon,
+                "lat": market_lat,
+                "lon": market_lon,
+                "geoAcc": (hit or {}).get("acc", "district"),
             }
         time.sleep(0.25)
     return markets
