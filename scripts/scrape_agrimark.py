@@ -15,6 +15,7 @@ Output: data/agrimark.json
 """
 
 import json
+import math
 import os
 import sys
 import time
@@ -120,6 +121,26 @@ def load_geo():
         return {}
 
 
+def spread_duplicates(markets):
+    """Give every market a distinct point so pins/labels never sit exactly on top
+    of each other. Markets sharing a coordinate are scattered a little apart."""
+    used = set()
+    for name in sorted(markets):
+        m = markets[name]
+        base_lat, base_lon = float(m["lat"]), float(m["lon"])
+        lat, lon, step = base_lat, base_lon, 0
+        while (round(lat, 3), round(lon, 3)) in used:
+            step += 1
+            angle = step * 2.399963229728653  # golden angle
+            radius = 0.01 * math.sqrt(step)
+            lat = base_lat + radius * math.cos(angle)
+            lon = base_lon + radius * math.sin(angle)
+        used.add((round(lat, 3), round(lon, 3)))
+        m["lat"] = round(lat, 6)
+        m["lon"] = round(lon, 6)
+    return markets
+
+
 def fetch_markets():
     geo = load_geo()
     markets = {}
@@ -144,7 +165,7 @@ def fetch_markets():
                 "geoAcc": (hit or {}).get("acc", "district"),
             }
         time.sleep(0.25)
-    return markets
+    return spread_duplicates(markets)
 
 
 def fetch_prices(date_display):

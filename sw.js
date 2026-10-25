@@ -1,4 +1,4 @@
-var CACHE = "mpc-v11";
+var CACHE = "mpc-v13";
 var TILE_CACHE = "mpc-tiles-v1";
 var ASSETS = [
   "./",

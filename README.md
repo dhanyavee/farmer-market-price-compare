@@ -30,7 +30,9 @@ basemap (free, no API key, no signup, open-source). Pins show the modal price
 closed = grey, best = highlighted). Nearby markets are grouped into **clusters**
 (click a cluster to zoom in); clicking a pin opens a popup with price, distance,
 net amount and status, plus a **Use as my market** button that re-runs the
-comparison.
+comparison. A few **major markets across the state** (configurable via
+`APP_CONFIG.majorMarkets` in `js/config.js`) are also plotted in blue so the map
+covers all of Tamil Nadu — only those with a price for the selected crop appear.
 
 The style is set in `js/config.js` (`APP_CONFIG.mapStyle`); default is OpenFreeMap
 `bright`. Other free styles: `liberty`, `positron`:

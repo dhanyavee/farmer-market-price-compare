@@ -27,6 +27,7 @@ stdlib only - no pip install needed. Run:  python3 agrimark_api.py
 """
 
 import json
+import math
 import os
 import sys
 import threading
@@ -120,6 +121,27 @@ def load_base():
         return None
 
 
+def spread_duplicates(markets):
+    """Ensure every market has a distinct point so pins/labels do not overlap."""
+    used = set()
+    out = {}
+    for name in sorted(markets):
+        m = dict(markets[name])
+        base_lat, base_lon = float(m["lat"]), float(m["lon"])
+        lat, lon, step = base_lat, base_lon, 0
+        while (round(lat, 3), round(lon, 3)) in used:
+            step += 1
+            angle = step * 2.399963229728653
+            radius = 0.01 * math.sqrt(step)
+            lat = base_lat + radius * math.cos(angle)
+            lon = base_lon + radius * math.sin(angle)
+        used.add((round(lat, 3), round(lon, 3)))
+        m["lat"] = round(lat, 6)
+        m["lon"] = round(lon, 6)
+        out[name] = m
+    return out
+
+
 def merge_history(history, averages, today):
     out = {k: v for k, v in (history or {}).items()}
     for crop_id, value in averages.items():
@@ -164,7 +186,7 @@ def build_full():
         "partial": MAX_CROPS > 0 and MAX_CROPS < len(base["crops"]),
         "districts": base.get("districts", {}),
         "crops": [{"id": str(c["id"]), "name": c["name"]} for c in base["crops"]],
-        "markets": base["markets"],
+        "markets": spread_duplicates(base["markets"]),
         "prices": prices,
         "history": merge_history(base.get("history", {}), averages, date),
     }

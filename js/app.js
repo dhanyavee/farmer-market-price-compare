@@ -130,6 +130,24 @@
     render(state.lastResult);
   }
 
+  function majorEntries(cropId, localId) {
+    var cfg = (window.APP_CONFIG && window.APP_CONFIG.majorMarkets) || [];
+    var local = D.getMarket(localId);
+    var out = [];
+    cfg.forEach(function (name) {
+      var m = D.getMarket(name);
+      if (!m || typeof m.lat !== "number" || typeof m.lon !== "number") return;
+      var price = D.getLatestPrice(cropId, m.id);
+      if (!price) return;
+      out.push({
+        market: m,
+        price: price,
+        distanceKm: local ? D.haversineKm(local.lat, local.lon, m.lat, m.lon) : 0
+      });
+    });
+    return out;
+  }
+
   function render(payload) {
     var ranked = payload.ranked;
     var lang = window.I18N.getLang();
@@ -145,7 +163,14 @@
     addStat(el.recommendStats, t("distance"), best.result.distanceKm + " km");
     if (ranked.local) {
       addStat(el.recommendStats, t("legendLocal"), C.round2(ranked.local.net).toLocaleString("en-IN"));
-      addStat(el.recommendStats, "Gain", (gain >= 0 ? "+₹" : "-₹") + Math.abs(C.round2(gain)).toLocaleString("en-IN"), gain >= 0 ? "best" : "bad");
+      if (!ranked.local.openToday) {
+        addStat(el.recommendStats, t("status"), t("closed"));
+      } else if (best.result.market.id === localId) {
+        addStat(el.recommendStats, t("gain"), "+₹0", "best");
+      } else {
+        var g = C.round2(gain);
+        addStat(el.recommendStats, t("gain"), (g >= 0 ? "+₹" : "-₹") + Math.abs(g).toLocaleString("en-IN"), g >= 0 ? "best" : "bad");
+      }
     }
 
     renderTable(ranked, localId);
@@ -172,6 +197,7 @@
     if (window.MarketMap) {
       window.MarketMap.init("map");
       window.MarketMap.render(ranked, localId, lang, {
+        majors: majorEntries(payload.cropId, localId),
         onUseMarket: function (id) {
           el.localMarket.value = id;
           run();

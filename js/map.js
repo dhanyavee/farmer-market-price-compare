@@ -126,8 +126,12 @@
       source: "markets",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-color": ["match", ["get", "state"], "local", "#d97706", "closed", "#94a3b8", "#16a34a"],
-        "circle-radius": 8,
+        "circle-color": [
+          "case",
+          ["get", "major"], "#2563eb",
+          ["match", ["get", "state"], "local", "#d97706", "closed", "#94a3b8", "#16a34a"]
+        ],
+        "circle-radius": ["case", ["get", "major"], 6, 8],
         "circle-stroke-width": ["case", ["get", "best"], 3, 2],
         "circle-stroke-color": ["case", ["get", "best"], "#111827", "#ffffff"]
       }
@@ -154,6 +158,7 @@
       paint: {
         "icon-color": [
           "case",
+          ["get", "major"], "#2563eb",
           ["get", "best"], "#15803d",
           ["match", ["get", "state"], "local", "#d97706", "closed", "#64748b", "#16a34a"]
         ],
@@ -191,12 +196,13 @@
     heading.textContent = p.name + (p.district ? " \u00B7 " + p.district : "");
     box.appendChild(heading);
 
-    [
+    var rows = [
       [t("price"), p.priceFull],
-      [t("distance"), p.distanceKm + " km"],
-      [t("net"), p.netFull],
-      [t("status"), p.statusLabel]
-    ].forEach(function (row) {
+      [t("distance"), p.distanceKm + " km"]
+    ];
+    if (p.netFull) rows.push([t("net"), p.netFull]);
+    rows.push([t("status"), p.statusLabel]);
+    rows.forEach(function (row) {
       var line = document.createElement("div");
       line.className = "mp-row";
       var label = document.createElement("span");
@@ -236,11 +242,13 @@
     var features = [];
     var bounds = new ml.LngLatBounds();
     var count = 0;
+    var seen = {};
 
     ranked.ranked.forEach(function (entry) {
       var r = entry.result;
       var m = r.market;
       if (typeof m.lat !== "number" || typeof m.lon !== "number") return;
+      seen[m.id] = true;
 
       var state = m.id === localId ? "local" : (entry.openToday ? "open" : "closed");
       var name = lang === "ta" ? m.ta : m.en;
@@ -254,6 +262,7 @@
           name: name,
           district: m.district || "",
           state: state,
+          major: false,
           best: m.id === bestId,
           isLocal: m.id === localId,
           label: priceShort(r.price.modal),
@@ -261,6 +270,32 @@
           netFull: priceFull(r.net),
           distanceKm: r.distanceKm,
           statusLabel: statusLabel
+        }
+      });
+      bounds.extend([m.lon, m.lat]);
+      count += 1;
+    });
+
+    ((options && options.majors) || []).forEach(function (item) {
+      var m = item && item.market;
+      if (!m || seen[m.id]) return;
+      if (typeof m.lat !== "number" || typeof m.lon !== "number") return;
+      features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [m.lon, m.lat] },
+        properties: {
+          id: m.id,
+          name: lang === "ta" ? m.ta : m.en,
+          district: m.district || "",
+          state: "major",
+          major: true,
+          best: false,
+          isLocal: false,
+          label: priceShort(item.price.modal),
+          priceFull: priceFull(item.price.modal),
+          netFull: null,
+          distanceKm: item.distanceKm,
+          statusLabel: t("majorMarket")
         }
       });
       bounds.extend([m.lon, m.lat]);
