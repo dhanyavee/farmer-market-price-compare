@@ -145,15 +145,16 @@
         "icon-image": "price-bg",
         "icon-text-fit": "both",
         "icon-text-fit-padding": [4, 8, 4, 8],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
+        "icon-allow-overlap": false,
+        "icon-padding": 2,
         "text-field": ["get", "label"],
         "text-font": ["Noto Sans Bold"],
         "text-size": 13,
         "text-offset": [0, -2.1],
         "text-anchor": "bottom",
-        "text-allow-overlap": true,
-        "text-ignore-placement": true
+        "text-allow-overlap": false,
+        "text-padding": 2,
+        "symbol-sort-key": ["case", ["get", "best"], 0, ["get", "isLocal"], 1, ["get", "major"], 2, 3]
       },
       paint: {
         "icon-color": [

@@ -27,6 +27,7 @@ BASE = "https://www.agrimark.tn.gov.in"
 IST = timezone(timedelta(hours=5, minutes=30))
 OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "agrimark.json")
 GEO_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "markets_geo.json")
+COORDS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "markets_coords.json")
 HISTORY_DAYS = 30
 
 HEADERS = {
@@ -121,6 +122,15 @@ def load_geo():
         return {}
 
 
+def load_coords():
+    """Hand-verified exact coordinates (name -> [lat, lon]). Highest priority."""
+    try:
+        with open(COORDS_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
 def spread_duplicates(markets):
     """Give every market a distinct point so pins/labels never sit exactly on top
     of each other. Markets sharing a coordinate are scattered a little apart."""
@@ -143,6 +153,7 @@ def spread_duplicates(markets):
 
 def fetch_markets():
     geo = load_geo()
+    coords = load_coords()
     markets = {}
     for dist_id, (dist_name, lat, lon) in DISTRICTS.items():
         rows = post("/home/getUSList", {"district": dist_id}) or []
@@ -151,9 +162,15 @@ def fetch_markets():
             if not name:
                 continue
             market_lat, market_lon = lat, lon
+            acc = "district"
             hit = geo.get(name)
             if hit and hit.get("lat") is not None and hit.get("lon") is not None:
                 market_lat, market_lon = hit["lat"], hit["lon"]
+                acc = hit.get("acc", "town")
+            exact = coords.get(name)
+            if exact:
+                market_lat, market_lon = exact[0], exact[1]
+                acc = "exact"
             markets[name] = {
                 "id": str(row.get("master_us_id") or ""),
                 "name": name,
@@ -162,7 +179,7 @@ def fetch_markets():
                 "district": dist_name,
                 "lat": market_lat,
                 "lon": market_lon,
-                "geoAcc": (hit or {}).get("acc", "district"),
+                "geoAcc": acc,
             }
         time.sleep(0.25)
     return spread_duplicates(markets)

@@ -47,11 +47,11 @@ OpenFreeMap is a best-effort, donation-funded service (no key/limits) and can al
 be self-hosted if it is ever unavailable.
 
 Market **names** come from the Tamil Nadu agrimark portal. That portal publishes no
-coordinates, so positions are resolved once from OpenStreetMap (see
-`scripts/geocode_markets.py`) and cached in `data/markets_geo.json`; the scraper
-stamps them into `data/agrimark.json`. Nothing is geocoded at runtime. Coordinates
-are approximate (venue where OSM has the mandi, otherwise town, otherwise district
-centroid).
+coordinates, so positions were resolved once and are stored in
+`data/markets_coords.json` (hand-verified exact locations for all 194 markets);
+`scripts/geocode_markets.py` + `data/markets_geo.json` are a fallback for any new
+market. The scraper stamps the coordinates into `data/agrimark.json`. Nothing is
+geocoded at runtime.
 
 ## Live prices (Tamil Nadu Agricultural Marketing Dept)
 
@@ -141,7 +141,8 @@ scripts/scrape_agrimark.py   scraper for agrimark.tn.gov.in -> data/agrimark.jso
 scripts/geocode_markets.py   one-time OSM geocoder -> data/markets_geo.json
 scripts/set_live_api.sh  point js/config.js at a live API URL
 data/agrimark.json       base market data + offline fallback
-data/markets_geo.json    market name -> coordinates lookup (OSM)
+data/markets_geo.json    market name -> coordinates lookup (OSM, fallback)
+data/markets_coords.json exact market name -> coordinates (hand-verified, all 194)
 server/agrimark_api.py   live CORS API proxy (stdlib Python) for your own server
 server/agrimark-api.service / README.md   server deploy files (Cloudflare Tunnel)
 assets/vendor/           Chart.js + MapLibre (vendored for offline use)

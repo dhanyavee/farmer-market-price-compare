@@ -90,9 +90,33 @@
     });
   }
 
+  function spreadDuplicates(list) {
+    var used = {};
+    function key(lat, lon) { return Math.round(lat * 1000) + ":" + Math.round(lon * 1000); }
+    var ordered = list.slice().sort(function (a, b) {
+      return String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0;
+    });
+    return ordered.map(function (m) {
+      var lat = m.lat, lon = m.lon, step = 0;
+      while (used[key(lat, lon)]) {
+        step += 1;
+        var angle = step * 2.399963229728653;
+        var radius = 0.012 * Math.sqrt(step);
+        lat = m.lat + radius * Math.cos(angle);
+        lon = m.lon + radius * Math.sin(angle);
+      }
+      used[key(lat, lon)] = true;
+      var out = {};
+      for (var k in m) { if (Object.prototype.hasOwnProperty.call(m, k)) out[k] = m[k]; }
+      out.lat = Math.round(lat * 1000000) / 1000000;
+      out.lon = Math.round(lon * 1000000) / 1000000;
+      return out;
+    });
+  }
+
   function amMarkets() {
     if (!agrimark) return MARKETS;
-    return Object.keys(agrimark.markets).map(function (key) {
+    var list = Object.keys(agrimark.markets).map(function (key) {
       var m = agrimark.markets[key];
       return {
         id: key,
@@ -103,7 +127,8 @@
         lon: m.lon,
         openDays: ALL_DAYS
       };
-    }).sort(function (a, b) { return a.en.localeCompare(b.en); });
+    });
+    return spreadDuplicates(list).sort(function (a, b) { return a.en.localeCompare(b.en); });
   }
 
   function getCrops() { return source === "agrimark" ? amCrops() : CROPS; }

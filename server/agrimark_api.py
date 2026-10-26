@@ -46,6 +46,7 @@ HISTORY_DAYS = 30
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE_DATA = os.environ.get("BASE_DATA") or os.path.join(HERE, "..", "data", "agrimark.json")
+COORDS_PATH = os.path.join(HERE, "..", "data", "markets_coords.json")
 PORT = int(os.environ.get("PORT", "8080"))
 HOST = os.environ.get("HOST", "127.0.0.1")
 CACHE_TTL = int(os.environ.get("CACHE_TTL", "600"))
@@ -121,6 +122,14 @@ def load_base():
         return None
 
 
+def load_coords():
+    try:
+        with open(COORDS_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
 def spread_duplicates(markets):
     """Ensure every market has a distinct point so pins/labels do not overlap."""
     used = set()
@@ -175,6 +184,13 @@ def build_full():
                 prices[crop_id] = clean
                 averages[crop_id] = avg
 
+    markets = {k: dict(v) for k, v in base["markets"].items()}
+    coords = load_coords()
+    for name, m in markets.items():
+        exact = coords.get(name)
+        if exact and len(exact) >= 2:
+            m["lat"], m["lon"] = float(exact[0]), float(exact[1])
+
     return {
         "source": base.get("source"),
         "sourceUrl": base.get("sourceUrl") or BASE + "/",
@@ -186,7 +202,7 @@ def build_full():
         "partial": MAX_CROPS > 0 and MAX_CROPS < len(base["crops"]),
         "districts": base.get("districts", {}),
         "crops": [{"id": str(c["id"]), "name": c["name"]} for c in base["crops"]],
-        "markets": spread_duplicates(base["markets"]),
+        "markets": spread_duplicates(markets),
         "prices": prices,
         "history": merge_history(base.get("history", {}), averages, date),
     }

@@ -48,6 +48,34 @@ DISTRICT_FIX = {
     "Nellai": "Tirunelveli",
 }
 
+# agrimark market spelling -> the spelling OpenStreetMap actually uses
+NAME_ALIASES = {
+    "Jeyankondam": "Jayankondam",
+    "Viruthachalam": "Virudhachalam",
+    "Sathiyamagalam": "Sathyamangalam",
+    "Kambam": "Cumbum",
+    "Manachanullur": "Manachanallur",
+    "Keelpennathur": "Kilpennathur",
+    "Paramathivelur": "Paramathi Velur",
+    "Pernampet": "Pernambut",
+    "Avallapalli": "Avalapalli",
+}
+
+# Coordinates for markets OpenStreetMap does not have (filled in by hand from
+# Google Maps). These always win, so re-running the geocoder keeps them.
+MANUAL_COORDS = {
+    "Jameenrayapettai": (12.9463, 80.1481),
+    "A.Jattihalli": (12.1158, 78.1468),
+    "Thathakapatti": (11.6375, 78.1503),
+    "Tirupatthur": (10.1293, 78.6186),
+    "Devaram": (9.9348, 77.2825),
+    "Tamarainagar": (12.2471, 79.0526),
+    "Kandiyaperi": (8.7315, 77.6828),
+    # OSM had these but the free-text match picked the wrong place; corrected here.
+    "NGO Colony": (8.788618, 78.124127),
+    "Gingee": (12.254415, 79.415776),
+}
+
 
 def load_json(path, default):
     try:
@@ -57,28 +85,46 @@ def load_json(path, default):
         return default
 
 
-def nominatim(query):
-    params = urllib.parse.urlencode({
+def nominatim(query, viewbox=None, retries=3):
+    params = {
         "q": query, "format": "json", "limit": 1, "countrycodes": "in",
-    })
-    req = urllib.request.Request(
-        NOMINATIM + "?" + params,
-        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8", "replace") or "[]")
+    }
+    if viewbox:
+        params["viewbox"] = viewbox
+        params["bounded"] = 1
+    qs = urllib.parse.urlencode(params)
+    last = None
+    for _ in range(retries):
+        try:
+            req = urllib.request.Request(
+                NOMINATIM + "?" + qs,
+                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8", "replace") or "[]")
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            time.sleep(1.5)
+    raise last
 
 
 def geocode(name, district, fallback):
+    if name in MANUAL_COORDS:
+        lat, lon = MANUAL_COORDS[name]
+        return {"lat": lat, "lon": lon, "acc": "manual", "q": "manual"}
+    qname = NAME_ALIASES.get(name, name)
+    lon_c, lat_c = fallback[1], fallback[0]
+    d = 0.6
+    viewbox = "%f,%f,%f,%f" % (lon_c - d, lat_c + d, lon_c + d, lat_c - d)
     queries = [
-        ("venue", "%s Uzhavar Sandhai, %s, Tamil Nadu, India" % (name, district)),
-        ("town", "%s, %s, Tamil Nadu, India" % (name, district)),
-        ("town", "%s, Tamil Nadu, India" % name),
+        ("venue", "%s Uzhavar Sandhai, %s, Tamil Nadu, India" % (qname, district)),
+        ("town", "%s, %s, Tamil Nadu, India" % (qname, district)),
+        ("town", "%s, Tamil Nadu, India" % qname),
     ]
     for acc, query in queries:
         time.sleep(RATE_LIMIT)
         try:
-            results = nominatim(query)
+            results = nominatim(query, viewbox=viewbox)
         except Exception as exc:  # noqa: BLE001
             print("    ! %s" % exc, file=sys.stderr)
             continue
@@ -111,7 +157,8 @@ def main():
         district_id = market.get("districtId")
         raw_district = market.get("district") or (districts.get(district_id, {}) or {}).get("name") or ""
         district = DISTRICT_FIX.get(raw_district, raw_district)
-        fallback = (market.get("lat"), market.get("lon"))
+        centroid = districts.get(district_id, {}) or {}
+        fallback = (centroid.get("lat", market.get("lat")), centroid.get("lon", market.get("lon")))
         result = geocode(name, district, fallback)
         out[name] = result
         print("  [%3d/%3d] %-32s -> %s %s (%s)" % (
