@@ -299,7 +299,6 @@
           statusLabel: t("majorMarket")
         }
       });
-      bounds.extend([m.lon, m.lat]);
       count += 1;
     });
 
